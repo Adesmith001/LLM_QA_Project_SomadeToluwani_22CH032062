@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snacks Q&A - Somade Toluwani</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Text:wght@400;500&display=swap">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-section">
+                <svg class="gemini-logo" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#gradient1)"/>
+                    <path d="M2 17L12 22L22 17L12 12L2 17Z" fill="url(#gradient2)"/>
+                    <defs>
+                        <linearGradient id="gradient1" x1="2" y1="2" x2="22" y2="12">
+                            <stop offset="0%" stop-color="#4285F4"/>
+                            <stop offset="100%" stop-color="#9B72CB"/>
+                        </linearGradient>
+                        <linearGradient id="gradient2" x1="2" y1="12" x2="22" y2="22">
+                            <stop offset="0%" stop-color="#9B72CB"/>
+                            <stop offset="100%" stop-color="#D96570"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Snacks</h1>
+            </div>
+            <p class="subtitle">NLP Question-Answering System</p>
+            <p class="author">Somade Toluwani • 22CH032062</p>
+        </header>
+
+        <main>
+            <div class="chat-container">
+                <div class="welcome-message" id="welcomeMessage">
+                    <h2>Hello, Somade</h2>
+                    <p>How can I help you today?</p>
+                </div>
+
+                <div id="chatHistory" class="chat-history"></div>
+
+                <div class="input-section">
+                    <div class="input-wrapper">
+                        <textarea 
+                            id="questionInput" 
+                            placeholder="Ask Snacks..."
+                            rows="1"
+                            maxlength="2000"
+                        ></textarea>
+                        <button id="askButton" onclick="askQuestion()" class="send-button">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let chatHistory = [];
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('questionInput');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            
+            if (!question) {
+                return;
+            }
+
+            // Hide welcome message
+            document.getElementById('welcomeMessage').style.display = 'none';
+
+            // Add user question to chat
+            addMessageToChat('user', question);
+
+            // Clear input and reset height
+            document.getElementById('questionInput').value = '';
+            document.getElementById('questionInput').style.height = 'auto';
+
+            // Disable send button
+            const sendButton = document.getElementById('askButton');
+            sendButton.disabled = true;
+
+            // Add loading message
+            const loadingId = addMessageToChat('assistant', 'Thinking...');
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question: question })
+                });
+
+                const data = await response.json();
+
+                // Remove loading message
+                document.getElementById(loadingId).remove();
+
+                if (!response.ok) {
+                    addMessageToChat('assistant', data.error || 'An error occurred. Please try again.', true);
+                    return;
+                }
+
+                // Display assistant response with metadata
+                displayAssistantResponse(data);
+
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                addMessageToChat('assistant', 'Network error. Please check your connection and try again.', true);
+                console.error('Error:', error);
+            } finally {
+                sendButton.disabled = false;
+            }
+        }
+
+        function addMessageToChat(role, content, isError = false) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageId = 'msg-' + Date.now();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message${isError ? ' error-message' : ''}`;
+            messageDiv.id = messageId;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(contentDiv);
+            chatHistory.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            return messageId;
+        }
+
+        function displayAssistantResponse(data) {
+            const chatHistory = document.getElementById('chatHistory');
+            
+            const responseDiv = document.createElement('div');
+            responseDiv.className = 'message assistant-message';
+            
+            // Main answer
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'message-content';
+            answerDiv.textContent = data.answer;
+            responseDiv.appendChild(answerDiv);
+            
+            // Metadata section (collapsible)
+            const metadataDiv = document.createElement('div');
+            metadataDiv.className = 'metadata-section';
+            metadataDiv.innerHTML = `
+                <button class="metadata-toggle" onclick="toggleMetadata(this)">
+                    <span>View preprocessing details</span>
+                    <svg class="chevron" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 10l5 5 5-5z"/>
+                    </svg>
+                </button>
+                <div class="metadata-content" style="display: none;">
+                    <div class="metadata-item">
+                        <strong>Original Question:</strong>
+                        <p>${data.original_question}</p>
+                    </div>
+                    <div class="metadata-item">
+                        <strong>Processed Question:</strong>
+                        <p>${data.processed_question}</p>
+                    </div>
+                    <div class="metadata-item">
+                        <strong>Tokens:</strong>
+                        <div class="tokens-container">
+                            ${data.tokens.map(token => `<span class="token-badge">${token}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            responseDiv.appendChild(metadataDiv);
+            chatHistory.appendChild(responseDiv);
+            
+            // Scroll to bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function toggleMetadata(button) {
+            const content = button.nextElementSibling;
+            const chevron = button.querySelector('.chevron');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                chevron.style.transform = 'rotate(180deg)';
+                button.querySelector('span').textContent = 'Hide preprocessing details';
+            } else {
+                content.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+                button.querySelector('span').textContent = 'View preprocessing details';
+            }
+        }
+
+        // Allow Enter key to submit (Shift+Enter for new line)
+        document.getElementById('questionInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
