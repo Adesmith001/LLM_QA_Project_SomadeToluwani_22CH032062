@@ -1,4 +1,4 @@
 Name: Somade Toluwani
 Matric Number: 22CH032062
 Live URL: [Your Vercel deployment URL will go here after deployment]
-GitHub Repository: [Your GitHub repository URL will go here]
+GitHub Repository: https://github.com/Adesmith001/LLM_QA_Project_SomadeToluwani_22CH032062
