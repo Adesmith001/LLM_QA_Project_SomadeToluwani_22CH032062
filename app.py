@@ -7,7 +7,6 @@ Matric: 22CH032062
 from flask import Flask, render_template, request, jsonify
 import os
 import string
-from groq import Groq
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -56,7 +55,10 @@ def query_llm(question):
         return "Error: GROQ_API_KEY not found. Please configure your environment variables."
     
     try:
-        # Configure Groq API
+        # Import here to avoid issues with missing dependencies
+        from groq import Groq
+        
+        # Configure Groq API - simplified initialization
         client = Groq(api_key=api_key)
         
         # Construct prompt
@@ -71,12 +73,16 @@ def query_llm(question):
                 }
             ],
             model="llama-3.3-70b-versatile",
+            temperature=0.7,
+            max_tokens=1024
         )
         
         # Extract answer
         answer = chat_completion.choices[0].message.content.strip()
         return answer
         
+    except ImportError:
+        return "Error: Groq library not installed. Please install it using: pip install groq"
     except Exception as e:
         return f"Error querying LLM: {str(e)}"
 
@@ -109,6 +115,9 @@ def ask_question():
         'tokens': tokens,
         'answer': answer
     })
+
+# For Vercel
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 if __name__ == '__main__':
     # For local development
